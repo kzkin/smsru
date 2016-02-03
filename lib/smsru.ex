@@ -1,0 +1,2 @@
+defmodule Smsru do
+end
