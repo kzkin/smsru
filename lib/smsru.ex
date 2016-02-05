@@ -29,6 +29,17 @@ defmodule Smsru do
     302 => "Пользователь авторизован, но аккаунт не подтвержден (пользователь не ввел код, присланный в регистрационной смс)"
   }
 
+  @balance_msg %{
+    100 => "Запрос выполнен.",
+    200 => "Неправильный api_id",
+    210 => "Используется GET, где необходимо использовать POST",
+    211 => "Метод не найден",
+    220 => "Сервис временно недоступен, попробуйте чуть позже.",
+    300 => "Неправильный token (возможно истек срок действия, либо ваш IP изменился)",
+    301 => "Неправильный пароль, либо пользователь не найден",
+    302 => "Пользователь авторизован, но аккаунт не подтвержден (пользователь не ввел код, присланный в регистрационной смс)"
+  }
+
   def sms_send(to, text, from \\ nil, time \\ nil, test \\ false, partner_id \\ nil) do
     api_id = get_auth_params
     url = @host <> Map.get(@actions, :send)
@@ -42,20 +53,29 @@ defmodule Smsru do
     if not is_nil(partner_id), do: params = Map.put(params, :partner_id, partner_id)
 
     params = Map.merge(params, api_id)
+    [ code | _ ] = http_request(url <> URI.encode_query(params))
+    code = String.to_integer(code)
+    msg = Map.get(@send_msg, code)
 
-    http_request(url <> URI.encode_query(params))
+    [ code, msg ]
   end
 
   def get_balance do
     url = @host <> Map.get(@actions, :balance) <> URI.encode_query(get_auth_params())
 
-    http_request(url)
+    [ code | val ] = http_request(url)
+    code = String.to_integer(code)
+
+    if code == 100, do: List.flatten([:ok, val]), else: [:error, Map.get(@balance_msg, code)]
   end
 
   def get_limit do
     url = @host <> Map.get(@actions, :limit) <> URI.encode_query(get_auth_params())
 
-    http_request(url)
+    [ code | val ] = http_request(url)
+    code = String.to_integer(code)
+
+    if code == 100, do: List.flatten([:ok, val]), else: [:error, Map.get(@balance_msg, code)]
   end
 
 
@@ -66,16 +86,13 @@ defmodule Smsru do
     res_body = response_body(:httpc.request(url))
     res_body = String.split(res_body, "\n")
 
-    [code | val] = res_body
-    code = String.to_integer(code)
-
-    if code == 100, do: val, else: raise(Map.get(@send_msg, code))
+    res_body
   end
 
   defp get_auth_params do
     api_id = Application.get_env(:smsru, :api_id)
 
-    if is_nil(api_id), do: raise("Need api_id in config"), else: %{api_id: api_id}
+    if is_nil(api_id), do: raise("You must specify api_id in the config"), else: %{api_id: api_id}
   end
 
   defp response_body({:ok, { _, _, body}}) do
