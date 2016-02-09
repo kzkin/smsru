@@ -1,6 +1,6 @@
 # Smsru
 
-**TODO: Add description**
+Elixir module to send sms through sms.ru provider gateway
 
 ## Installation
 
@@ -12,9 +12,4 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
           [{:smsru, "~> 0.0.1"}]
         end
 
-  2. Ensure smsru is started before your application:
-
-        def application do
-          [applications: [:smsru]]
-        end
-
+  2. Add api_id to config
